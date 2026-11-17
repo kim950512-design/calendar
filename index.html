@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>달력</title>
+  <style>
+    :root {
+      --bg: #f2f3f5;
+      --panel: #ffffff;
+      --text: #1d1f23;
+      --muted: #9aa0a8;
+      --line: #eceef1;
+      --hover: #f4f6f8;
+      --accent: #2f6fed;
+      --accent-text: #ffffff;
+      --sun: #e5484d;
+      --sat: #2f6fed;
+      --memo: #ff9f0a;
+      --shadow: 0 10px 30px rgba(0, 0, 0, .08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111214;
+        --panel: #1c1d20;
+        --text: #f4f5f7;
+        --muted: #6b7079;
+        --line: #2a2c30;
+        --hover: #26282c;
+        --accent: #5b8cff;
+        --sun: #ff6b6f;
+        --sat: #6f9bff;
+        --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    }
+    .cal {
+      width: 100%;
+      max-width: 520px;
+      background: var(--panel);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 22px; margin: 0; font-weight: 600; }
+    .nav { display: flex; gap: 6px; }
+    button {
+      font: inherit;
+      border: 0;
+      background: var(--hover);
+      color: var(--text);
+      border-radius: 10px;
+      height: 36px;
+      min-width: 36px;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(.96); }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .dow {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 6px 0;
+    }
+    .dow.sun { color: var(--sun); }
+    .dow.sat { color: var(--sat); }
+    .day {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      background: transparent;
+      height: auto;
+      min-width: 0;
+    }
+    .day:hover { background: var(--hover); filter: none; }
+    .day.other { color: var(--muted); opacity: .5; }
+    .day.sun, .day.holiday { color: var(--sun); }
+    .day.sat { color: var(--sat); }
+    .day .num {
+      width: 32px; height: 32px;
+      display: grid; place-items: center;
+      border-radius: 50%;
+    }
+    .day.today .num { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+    .day.selected { outline: 2px solid var(--accent); }
+    .day .label {
+      font-size: 10px;
+      line-height: 1.1;
+      margin-top: 2px;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      padding: 0 2px;
+    }
+    .day .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--memo);
+      margin-top: 3px;
+    }
+    .memo {
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+    .memo h2 { font-size: 16px; margin: 0 0 10px; font-weight: 600; }
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      font: inherit;
+      font-size: 15px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--text);
+    }
+    textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    @media (max-width: 400px) {
+      .cal { padding: 14px; }
+      .day { font-size: 14px; padding-top: 4px; }
+      .day .num { width: 28px; height: 28px; }
+      .day .label { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="cal" aria-label="달력">
+    <header>
+      <h1 id="title"></h1>
+      <div class="nav">
+        <button id="prev" aria-label="이전 달">‹</button>
+        <button id="today">오늘</button>
+        <button id="next" aria-label="다음 달">›</button>
+      </div>
+    </header>
+
+    <div class="grid" id="grid"></div>
+
+    <section class="memo">
+      <h2 id="memoTitle"></h2>
+      <textarea id="memoText" placeholder="이 날짜에 메모를 남겨보세요"></textarea>
+      <div class="hint">메모는 이 브라우저에만 저장돼요.</div>
+    </section>
+  </main>
+
+  <script>
+    // 양력 고정 공휴일 (설날·추석·부처님오신날 등 음력 공휴일은 해마다 날짜가 바뀌어 제외)
+    const HOLIDAYS = {
+      "01-01": "신정",
+      "03-01": "삼일절",
+      "05-05": "어린이날",
+      "06-06": "현충일",
+      "08-15": "광복절",
+      "10-03": "개천절",
+      "10-09": "한글날",
+      "12-25": "성탄절",
+    };
+    const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+
+    const grid = document.getElementById("grid");
+    const title = document.getElementById("title");
+    const memoTitle = document.getElementById("memoTitle");
+    const memoText = document.getElementById("memoText");
+
+    const now = new Date();
+    let viewYear = now.getFullYear();
+    let viewMonth = now.getMonth();
+    let selected = key(now.getFullYear(), now.getMonth(), now.getDate());
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function key(y, m, d) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
+
+    // 메모 저장소 (브라우저가 저장을 막아도 동작하도록 try/catch)
+    function loadMemos() {
+      try { return JSON.parse(localStorage.getItem("calendar-memos") || "{}"); }
+      catch { return {}; }
+    }
+    let memos = loadMemos();
+    function saveMemos() {
+      try { localStorage.setItem("calendar-memos", JSON.stringify(memos)); } catch {}
+    }
+
+    function render() {
+      title.textContent = `${viewYear}년 ${viewMonth + 1}월`;
+      grid.innerHTML = "";
+
+      DOW.forEach((d, i) => {
+        const el = document.createElement("div");
+        el.className = "dow" + (i === 0 ? " sun" : i === 6 ? " sat" : "");
+        el.textContent = d;
+        grid.appendChild(el);
+      });
+
+      const first = new Date(viewYear, viewMonth, 1);
+      const start = new Date(viewYear, viewMonth, 1 - first.getDay());
+      const todayKey = key(now.getFullYear(), now.getMonth(), now.getDate());
+
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        const y = d.getFullYear(), m = d.getMonth(), date = d.getDate();
+        const k = key(y, m, date);
+        const holiday = HOLIDAYS[`${pad(m + 1)}-${pad(date)}`];
+
+        const btn = document.createElement("button");
+        btn.className = "day";
+        if (m !== viewMonth) btn.classList.add("other");
+        if (d.getDay() === 0) btn.classList.add("sun");
+        if (d.getDay() === 6) btn.classList.add("sat");
+        if (holiday) btn.classList.add("holiday");
+        if (k === todayKey) btn.classList.add("today");
+        if (k === selected) btn.classList.add("selected");
+        btn.setAttribute("aria-label", `${y}년 ${m + 1}월 ${date}일${holiday ? " " + holiday : ""}`);
+
+        btn.innerHTML = `<span class="num">${date}</span>`;
+        if (holiday) btn.innerHTML += `<span class="label">${holiday}</span>`;
+        if (memos[k]) btn.innerHTML += `<span class="dot" aria-hidden="true"></span>`;
+
+        btn.addEventListener("click", () => {
+          selected = k;
+          if (m !== viewMonth) { viewYear = y; viewMonth = m; }
+          render();
+        });
+        grid.appendChild(btn);
+      }
+
+      const [sy, sm, sd] = selected.split("-").map(Number);
+      const sDate = new Date(sy, sm - 1, sd);
+      memoTitle.textContent = `${sm}월 ${sd}일 (${DOW[sDate.getDay()]}) 메모`;
+      memoText.value = memos[selected] || "";
+    }
+
+    memoText.addEventListener("input", () => {
+      const v = memoText.value;
+      const hadMemo = !!memos[selected];
+      if (v.trim()) memos[selected] = v; else delete memos[selected];
+      saveMemos();
+      if (hadMemo !== !!memos[selected]) {
+        const pos = memoText.selectionStart;
+        render();
+        memoText.focus();
+        memoText.setSelectionRange(pos, pos);
+      }
+    });
+
+    function shift(delta) {
+      viewMonth += delta;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      render();
+    }
+    document.getElementById("prev").onclick = () => shift(-1);
+    document.getElementById("next").onclick = () => shift(1);
+    document.getElementById("today").onclick = () => {
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      selected = key(viewYear, viewMonth, now.getDate());
+      render();
+    };
+
+    // 키보드: ← → 로 달 이동 (메모 입력 중에는 동작 안 함)
+    document.addEventListener("keydown", e => {
+      if (e.target === memoText) return;
+      if (e.key === "ArrowLeft") shift(-1);
+      if (e.key === "ArrowRight") shift(1);
+    });
+
+    render();
+  </script>
+</body>
+</html>
